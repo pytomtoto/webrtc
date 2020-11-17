@@ -57,7 +57,7 @@ type RTPHeaderExtensionCapability struct {
 	URI string
 }
 
-// RTPHeaderExtensionParameters nables an application to determine whether a header extension is configured for
+// RTPHeaderExtensionParameters enables an application to determine whether a header extension is configured for
 // use within an RTCRtpSender or RTCRtpReceiver.
 //
 // https://w3c.github.io/webrtc-pc/#rtcrtpheaderextensionparameters

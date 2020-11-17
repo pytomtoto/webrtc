@@ -40,7 +40,7 @@ t=0 0
 `
 		m := MediaEngine{}
 		assert.NoError(t, m.RegisterDefaultCodecs())
-		assert.NoError(t, m.updateFromRemoteDescription(mustParse(noMedia)))
+		assert.NoError(t, m.updateFromRemotePlanBDescription(mustParse(noMedia)))
 
 		assert.False(t, m.negotiatedVideo)
 		assert.False(t, m.negotiatedAudio)
@@ -58,7 +58,7 @@ a=fmtp:111 minptime=10; useinbandfec=1
 
 		m := MediaEngine{}
 		assert.NoError(t, m.RegisterDefaultCodecs())
-		assert.NoError(t, m.updateFromRemoteDescription(mustParse(opusSamePayload)))
+		assert.NoError(t, m.updateFromRemotePlanBDescription(mustParse(opusSamePayload)))
 
 		assert.False(t, m.negotiatedVideo)
 		assert.True(t, m.negotiatedAudio)
@@ -80,7 +80,7 @@ a=fmtp:112 minptime=10; useinbandfec=1
 
 		m := MediaEngine{}
 		assert.NoError(t, m.RegisterDefaultCodecs())
-		assert.NoError(t, m.updateFromRemoteDescription(mustParse(opusSamePayload)))
+		assert.NoError(t, m.updateFromRemotePlanBDescription(mustParse(opusSamePayload)))
 
 		assert.False(t, m.negotiatedVideo)
 		assert.True(t, m.negotiatedAudio)
@@ -105,7 +105,7 @@ a=fmtp:111 minptime=10; useinbandfec=1
 
 		m := MediaEngine{}
 		assert.NoError(t, m.RegisterDefaultCodecs())
-		assert.NoError(t, m.updateFromRemoteDescription(mustParse(opusUpcase)))
+		assert.NoError(t, m.updateFromRemotePlanBDescription(mustParse(opusUpcase)))
 
 		assert.False(t, m.negotiatedVideo)
 		assert.True(t, m.negotiatedAudio)
@@ -126,7 +126,7 @@ a=rtpmap:111 opus/48000/2
 
 		m := MediaEngine{}
 		assert.NoError(t, m.RegisterDefaultCodecs())
-		assert.NoError(t, m.updateFromRemoteDescription(mustParse(opusNoFmtp)))
+		assert.NoError(t, m.updateFromRemotePlanBDescription(mustParse(opusNoFmtp)))
 
 		assert.False(t, m.negotiatedVideo)
 		assert.True(t, m.negotiatedAudio)
@@ -149,7 +149,7 @@ a=rtpmap:111 opus/48000/2
 
 		m := MediaEngine{}
 		assert.NoError(t, m.RegisterDefaultCodecs())
-		assert.NoError(t, m.updateFromRemoteDescription(mustParse(headerExtensions)))
+		assert.NoError(t, m.updateFromRemotePlanBDescription(mustParse(headerExtensions)))
 
 		assert.False(t, m.negotiatedVideo)
 		assert.True(t, m.negotiatedAudio)
