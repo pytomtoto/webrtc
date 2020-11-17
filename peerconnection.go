@@ -974,8 +974,10 @@ func (pc *PeerConnection) SetRemoteDescription(desc SessionDescription) error { 
 	detectedPlanB := descriptionIsPlanB(pc.RemoteDescription())
 	weOffer := desc.Type == SDPTypeAnswer
 
-	if err := pc.api.mediaEngine.updateFromRemotePlanBDescription(*desc.parsed); err != nil {
-		return err
+	if detectedPlanB {
+		if err := pc.api.mediaEngine.updateFromRemotePlanBDescription(*desc.parsed); err != nil {
+			return err
+		}
 	}
 
 	if !detectedPlanB {
