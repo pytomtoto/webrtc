@@ -190,7 +190,7 @@ func (r *RTPSender) ReadRTCP() ([]rtcp.Packet, error) {
 // and transmitted to a remote RTPReceiver.
 func (r *RTPSender) GetParameters() RTPSendParameters {
 	r.mu.RLock()
-	defer r.mu.Unlock()
+	defer r.mu.RUnlock()
 	return RTPSendParameters{
 		Encodings:        r.encodingParameters,
 		HeaderExtensions: r.headerExtensions,
