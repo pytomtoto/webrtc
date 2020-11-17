@@ -969,16 +969,16 @@ func (pc *PeerConnection) SetRemoteDescription(desc SessionDescription) error { 
 		return err
 	}
 
-	if err := pc.api.mediaEngine.updateFromRemoteDescription(*desc.parsed); err != nil {
-		return err
-	}
-
 	var t *RTPTransceiver
 	localTransceivers := append([]*RTPTransceiver{}, pc.GetTransceivers()...)
 	detectedPlanB := descriptionIsPlanB(pc.RemoteDescription())
 	weOffer := desc.Type == SDPTypeAnswer
 
-	if !weOffer && !detectedPlanB {
+	if err := pc.api.mediaEngine.updateFromRemotePlanBDescription(*desc.parsed); err != nil {
+		return err
+	}
+
+	if !detectedPlanB {
 		for _, media := range pc.RemoteDescription().parsed.MediaDescriptions {
 			midValue := getMidValue(media)
 			if midValue == "" {
@@ -996,6 +996,15 @@ func (pc *PeerConnection) SetRemoteDescription(desc SessionDescription) error { 
 			}
 
 			t, localTransceivers = findByMid(midValue, localTransceivers)
+			if weOffer {
+				if t != nil {
+					if err := pc.api.mediaEngine.updateFromMediaDescription(media, t); err != nil {
+						return err
+					}
+				}
+				continue
+			}
+
 			if t == nil {
 				t, localTransceivers = satisfyTypeAndDirection(kind, direction, localTransceivers)
 			} else if direction == RTPTransceiverDirectionInactive {
@@ -1018,6 +1027,12 @@ func (pc *PeerConnection) SetRemoteDescription(desc SessionDescription) error { 
 					return err
 				}
 			}
+			if t != nil {
+				if err := pc.api.mediaEngine.updateFromMediaDescription(media, t); err != nil {
+					return err
+				}
+			}
+
 		}
 	}
 
@@ -1566,7 +1581,6 @@ func (pc *PeerConnection) AddTransceiverFromKind(kind RTPCodecType, init ...RtpT
 		if err != nil {
 			return nil, err
 		}
-
 		t := pc.newRTPTransceiver(
 			receiver,
 			nil,
@@ -1601,12 +1615,11 @@ func (pc *PeerConnection) AddTransceiverFromTrack(track TrackLocal, init ...RtpT
 		if err != nil {
 			return nil, err
 		}
-
 		sender, err := pc.api.NewRTPSender(track, pc.dtlsTransport)
 		if err != nil {
 			return nil, err
 		}
-
+		sender.setExtensionHeaders(pc.api.mediaEngine.getExtMapFromKind(track.Kind()))
 		t := pc.newRTPTransceiver(
 			receiver,
 			sender,
@@ -1623,7 +1636,7 @@ func (pc *PeerConnection) AddTransceiverFromTrack(track TrackLocal, init ...RtpT
 		if err != nil {
 			return nil, err
 		}
-
+		sender.setExtensionHeaders(pc.api.mediaEngine.getExtMapFromKind(track.Kind()))
 		t := pc.newRTPTransceiver(
 			nil,
 			sender,

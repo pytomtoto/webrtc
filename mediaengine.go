@@ -245,6 +245,20 @@ func (m *MediaEngine) GetHeaderExtensionID(extension RTPHeaderExtensionCapabilit
 	return
 }
 
+func (m *MediaEngine) getExtMapFromKind(kind RTPCodecType) []RTPHeaderExtensionParameters {
+	var extMap []RTPHeaderExtensionParameters
+	id := uint8(1)
+	for _, ext := range m.headerExtensions {
+		if ext.isVideo && kind == RTPCodecTypeVideo || ext.isAudio && kind == RTPCodecTypeAudio {
+			extMap = append(extMap, RTPHeaderExtensionParameters{
+				URI: ext.uri,
+				ID:  id,
+			})
+			id++
+		}
+	}
+	return extMap
+}
 func (m *MediaEngine) getCodecByPayload(payloadType PayloadType) (RTPCodecParameters, error) {
 	for _, codec := range m.negotiatedVideoCodecs {
 		if codec.PayloadType == payloadType {
@@ -344,7 +358,7 @@ func (m *MediaEngine) updateHeaderExtension(id int, extension string, typ RTPCod
 }
 
 // Update the MediaEngine from a remote description
-func (m *MediaEngine) updateFromRemoteDescription(desc sdp.SessionDescription) error {
+func (m *MediaEngine) updateFromRemotePlanBDescription(desc sdp.SessionDescription) error {
 	for _, media := range desc.MediaDescriptions {
 		var typ RTPCodecType
 		switch {
@@ -374,12 +388,74 @@ func (m *MediaEngine) updateFromRemoteDescription(desc sdp.SessionDescription) e
 			return err
 		}
 
-		for id, extension := range extensions {
-			if err = m.updateHeaderExtension(extension, id, typ); err != nil {
+		for extension, id := range extensions {
+			if err = m.updateHeaderExtension(id, extension, typ); err != nil {
 				return err
 			}
 		}
 	}
+	return nil
+}
+
+func (m *MediaEngine) updateFromMediaDescription(media *sdp.MediaDescription, t *RTPTransceiver) error {
+	var typ RTPCodecType
+	switch {
+	case !m.negotiatedAudio && strings.EqualFold(media.MediaName.Media, "audio"):
+		m.negotiatedAudio = true
+		typ = RTPCodecTypeAudio
+	case !m.negotiatedVideo && strings.EqualFold(media.MediaName.Media, "video"):
+		m.negotiatedVideo = true
+		typ = RTPCodecTypeVideo
+	default:
+		return nil
+	}
+
+	codecs, err := codecsFromMediaDescription(media)
+	if err != nil {
+		return err
+	}
+
+	for _, codec := range codecs {
+		if err = m.updateCodecParameters(codec, typ); err != nil {
+			return err
+		}
+	}
+	extensions, err := rtpExtensionsFromMediaDescription(media)
+	if err != nil {
+		return err
+	}
+
+	var extHeaders []RTPHeaderExtensionParameters
+	for extension, id := range extensions {
+		for _, localExtension := range m.headerExtensions {
+			if localExtension.uri == extension &&
+				(localExtension.isAudio && t.kind == RTPCodecTypeAudio ||
+					localExtension.isVideo && t.kind == RTPCodecTypeVideo) {
+				extHeaders = append(extHeaders, RTPHeaderExtensionParameters{
+					URI: extension,
+					ID:  uint8(id),
+				})
+			}
+		}
+	}
+	switch t.Direction() {
+	case RTPTransceiverDirectionSendrecv:
+		if t.Receiver() != nil {
+			t.Receiver().setExtensionHeaders(extHeaders)
+		}
+		if t.Sender() != nil {
+			t.Sender().setExtensionHeaders(extHeaders)
+		}
+	case RTPTransceiverDirectionSendonly:
+		if t.Sender() != nil {
+			t.Sender().setExtensionHeaders(extHeaders)
+		}
+	case RTPTransceiverDirectionRecvonly:
+		if t.Receiver() != nil {
+			t.Receiver().setExtensionHeaders(extHeaders)
+		}
+	}
+
 	return nil
 }
 

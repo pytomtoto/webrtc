@@ -313,12 +313,39 @@ func addTransceiverSDP(d *sdp.SessionDescription, isPlanB, shouldAddCandidates b
 		return false, nil
 	}
 
-	for id, rtpExtension := range mediaEngine.negotiatedHeaderExtensionsForType(t.kind) {
-		extURL, err := url.Parse(rtpExtension.uri)
-		if err != nil {
-			return false, err
+	if isPlanB {
+		for id, rtpExtension := range mediaEngine.negotiatedHeaderExtensionsForType(t.kind) {
+			extURL, err := url.Parse(rtpExtension.uri)
+			if err != nil {
+				return false, err
+			}
+			media.WithExtMap(sdp.ExtMap{Value: id, URI: extURL})
 		}
-		media.WithExtMap(sdp.ExtMap{Value: id, URI: extURL})
+	} else {
+		var extHeaders []RTPHeaderExtensionParameters
+		switch t.Direction() {
+		case RTPTransceiverDirectionSendrecv:
+			if t.Receiver() != nil {
+				extHeaders = t.Receiver().GetParameters().HeaderExtensions
+			} else if t.Sender() != nil {
+				extHeaders = t.Sender().GetParameters().HeaderExtensions
+			}
+		case RTPTransceiverDirectionSendonly:
+			if t.Sender() != nil {
+				extHeaders = t.Sender().GetParameters().HeaderExtensions
+			}
+		case RTPTransceiverDirectionRecvonly:
+			if t.Receiver() != nil {
+				extHeaders = t.Receiver().GetParameters().HeaderExtensions
+			}
+		}
+		for _, rtpExtension := range extHeaders {
+			extURL, err := url.Parse(rtpExtension.URI)
+			if err != nil {
+				return false, err
+			}
+			media.WithExtMap(sdp.ExtMap{Value: int(rtpExtension.ID), URI: extURL})
+		}
 	}
 
 	if len(mediaSection.ridMap) > 0 {

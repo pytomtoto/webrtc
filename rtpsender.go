@@ -33,6 +33,8 @@ type RTPSender struct {
 
 	mu                     sync.RWMutex
 	sendCalled, stopCalled chan interface{}
+	headerExtensions       []RTPHeaderExtensionParameters
+	encodingParameters     RTPEncodingParameters
 }
 
 // NewRTPSender constructs a new RTPSender
@@ -130,6 +132,8 @@ func (r *RTPSender) Send(parameters RTPSendParameters) error {
 		return err
 	}
 
+	r.encodingParameters = parameters.Encodings
+
 	close(r.sendCalled)
 	return nil
 }
@@ -180,6 +184,24 @@ func (r *RTPSender) ReadRTCP() ([]rtcp.Packet, error) {
 	}
 
 	return rtcp.Unmarshal(b[:i])
+}
+
+// GetParameters returns the RTPSender current parameters for how track is encoded
+// and transmitted to a remote RTPReceiver.
+func (r *RTPSender) GetParameters() RTPSendParameters {
+	r.mu.RLock()
+	defer r.mu.Unlock()
+	return RTPSendParameters{
+		Encodings:        r.encodingParameters,
+		HeaderExtensions: r.headerExtensions,
+		Codecs:           r.api.mediaEngine.getCodecsByKind(r.track.Kind()),
+	}
+}
+
+func (r *RTPSender) setExtensionHeaders(e []RTPHeaderExtensionParameters) {
+	r.mu.Lock()
+	r.headerExtensions = e
+	r.mu.Unlock()
 }
 
 // hasSent tells if data has been ever sent for this instance
